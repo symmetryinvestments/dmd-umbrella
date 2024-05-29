@@ -1,0 +1,159 @@
+# https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions
+
+name: Main
+on:
+  - pull_request
+  - push
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  HOST_DC: ldc-1.36.0
+
+jobs:
+  test:
+    name: Ubuntu 20.04 x86_64
+    runs-on: ubuntu-20.04
+    timeout-minutes: 15
+    permissions:
+      contents: write # for creating the GitHub release
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+          fetch-depth: 0 # no shallow cloning, for arbitrary submodule refs
+      - name: Build
+        run: |
+          set -eux
+
+          # install (if required) and activate host D compiler
+          if [ ! -e ~/dlang/$HOST_DC/activate ]; then
+              curl -fsS --max-time 15 https://dlang.org/install.sh -O
+              bash install.sh $HOST_DC
+              rm install.sh
+          fi
+          source ~/dlang/$HOST_DC/activate
+
+          # patch DMD version if this CI job was triggered by a tag
+          tag=""
+          if [[ '${{ github.ref }}' = refs/tags/v* ]]; then
+              cp dmd/VERSION dmd/VERSION.bak
+              ref='${{ github.ref }}'
+              tag="${ref:10}"
+              echo "$tag" > dmd/VERSION
+              # force usage of that VERSION file
+              mv dmd/.git dmd/.git.bak
+          fi
+
+          # build DMD build/test helpers
+          make -C dmd -j$(nproc) HOST_DMD=$DMD generated/{build,run}
+
+          # build DMD with PGO instrumentation (and install to ./install)
+          # `-linker=gold` required for LTO
+          dmd/generated/build --force HOST_DMD=$DMD ENABLE_RELEASE=1 ENABLE_LTO=1 INSTALL_DIR=install \
+            DFLAGS="-fprofile-generate=$PWD/%p.profraw -vp-counters-per-site=1.5 -linker=gold" \
+            install
+
+          # build & install druntime
+          make -C dmd/druntime -j$(nproc) install
+          # build & install Phobos
+          make -C phobos -j$(nproc) install
+          # run 'compilable' tests for more PGO coverage
+          dmd/generated/run HOST_DMD=$DMD compilable
+
+          # merge PGO profiles from compiling druntime/Phobos + compilable tests
+          ldc-profdata merge --output=merged.profdata *.profraw
+          ls -lh *.prof{data,raw}
+          rm *.profraw
+
+          # rebuild DMD with PGO; ignore PGO warnings wrt. 'function control flow change detected (hash mismatch)'
+          ls -lh install/linux/bin64/dmd
+          dmd/generated/build --force HOST_DMD=$DMD ENABLE_RELEASE=1 ENABLE_LTO=1 \
+            DFLAGS="-fprofile-use=$PWD/merged.profdata -linker=gold -wi"
+          mv dmd/generated/linux/release/64/dmd install/linux/bin64/
+          ls -lh install/linux/bin64/dmd
+
+          # restore VERSION file and deactivate host compiler
+          if [ -e dmd/VERSION.bak ]; then
+              mv -f dmd/VERSION.bak dmd/VERSION
+              mv dmd/.git.bak dmd/.git
+          fi
+          deactivate
+
+          export BIN_DIR="$PWD/install/linux/bin64"
+          export DMD="$BIN_DIR/dmd" # use freshly built DMD from now on
+
+          # build & install dub
+          cd dub
+          $DMD -run build.d
+          cp bin/dub $BIN_DIR
+          cd ..
+
+          # clone, build & install dlang tools
+          git clone --recursive https://github.com/dlang/tools.git dlang-tools
+          cd dlang-tools
+          # the VERSION file might specify a tag that doesn't exist yet; fall back to the most recent DMD tag in that case
+          git checkout "$(cat ../dmd/VERSION)" || git checkout "$(cd ../dmd && git describe --tags --abbrev=0)"
+          mkdir bin
+          $DMD -w -de -dip1000 rdmd.d -of=bin/rdmd
+          $DMD -w -de -dip1000 ddemangle.d -of=bin/ddemangle
+          $DMD -w -de -dip1000 DustMite/dustmite.d DustMite/splitter.d DustMite/polyhash.d -of=bin/dustmite
+          cp bin/{rdmd,ddemangle,dustmite} $BIN_DIR
+          cd ..
+          rm -rf dlang-tools
+
+          # build & install reggae (using freshly built dub)
+          cd reggae
+          DFLAGS="-O -g" PATH="$BIN_DIR:$PATH" dub build --combined
+          cp bin/reggae $BIN_DIR
+          cd ..
+
+          # build & install ninja
+          cd ninja
+          cmake -Bbuild -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXE_LINKER_FLAGS=-static-libstdc++
+          cmake --build build
+          cp build/ninja $BIN_DIR
+          cd ..
+
+          # smoke test binaries
+          $BIN_DIR/dmd --version
+          $BIN_DIR/dub --version
+          ($BIN_DIR/rdmd --version || true) | head -n1
+          ($BIN_DIR/ddemangle -h || true) | head -n1
+          $BIN_DIR/dustmite --version
+          $BIN_DIR/reggae --version
+          $BIN_DIR/ninja --version
+
+          # package artifact
+          mv install dmd2
+          XZ_OPT=-9 tar -cJf dmd2.tar.xz --owner=0 --group=0 dmd2
+          rm -rf dmd2
+
+          # rename package for tagged releases
+          if [[ "$tag" != "" ]]; then
+            mv dmd2.tar.xz "dmd.${tag:1}.linux.tar.xz"
+          fi
+
+          sha256sum dmd*.tar.xz > sha256sum.txt
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-x86_64
+          path: |
+            dmd*.tar.xz
+            sha256sum.txt
+          compression-level: 0
+      - name: Create GitHub release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: ncipollo/release-action@v1
+        with:
+          artifacts: dmd*.tar.xz,sha256sum.txt
+          allowUpdates: true
+          artifactErrorsFailBuild: true
+          prerelease: true
+          omitPrereleaseDuringUpdate: true
+          omitName: true
+          omitBody: true
+          omitDraftDuringUpdate: true
