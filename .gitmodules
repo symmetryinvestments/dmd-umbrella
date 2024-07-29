@@ -1,15 +1,15 @@
 [submodule "dmd"]
 	path = dmd
-	url = git@github.com:symmetryinvestments/dmd.git
+	url = git@github.com:dlang/dmd.git
 [submodule "phobos"]
 	path = phobos
 	url = git@github.com:dlang/phobos.git
 [submodule "dub"]
 	path = dub
-	url = git@github.com:symmetryinvestments/dub.git
+	url = git@github.com:dlang/dub.git
 [submodule "reggae"]
 	path = reggae
-	url = git@github.com:symmetryinvestments/reggae.git
+	url = git@github.com:kinke/reggae.git
 [submodule "ninja"]
 	path = ninja
 	url = git@github.com:symmetryinvestments/ninja.git
