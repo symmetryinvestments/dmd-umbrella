@@ -3,7 +3,7 @@
 	url = git@github.com:symmetryinvestments/dmd.git
 [submodule "phobos"]
 	path = phobos
-	url = git@github.com:symmetryinvestments/phobos.git
+	url = git@github.com:dlang/phobos.git
 [submodule "dub"]
 	path = dub
 	url = git@github.com:dlang/dub.git
