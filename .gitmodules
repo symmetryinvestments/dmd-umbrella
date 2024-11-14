@@ -13,3 +13,7 @@
 [submodule "ninja"]
 	path = ninja
 	url = git@github.com:symmetryinvestments/ninja.git
+[submodule "sdc"]
+	path = sdc
+	url = git@github.com:schveiguy/sdc.git
+	branch = dmdbuild

@@ -36,6 +36,18 @@ jobs:
           fi
           source ~/dlang/$HOST_DC/activate
 
+          # install distro packages for SDC
+          export DEBIAN_FRONTEND=noninteractive
+          wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
+          echo 'deb http://apt.llvm.org/focal/ llvm-toolchain-focal-19 main' | sudo tee /etc/apt/sources.list.d/llvm.list
+          sudo apt-get -qq update
+          sudo apt-get install -qq llvm-19-dev lld-19 nasm
+          sudo ln -s lld-19 /usr/bin/ld.lld # so that the SDC Makefile detects it
+
+          # build SDC's libdmdalloc.a
+          LLVM_CONFIG=llvm-config-19 SDFLAGS=-O3 make -C sdc -j$(nproc) lib/libdmdalloc.a
+          ls -l sdc/lib/libdmdalloc.a
+
           # patch DMD version if this CI job was triggered by a tag
           tag=""
           if [[ '${{ github.ref }}' = refs/tags/v* ]]; then
