@@ -1,6 +1,6 @@
 [submodule "dmd"]
 	path = dmd
-	url = git@github.com:dlang/dmd.git
+	url = git@github.com:symmetryinvestments/dmd.git
 [submodule "phobos"]
 	path = phobos
 	url = git@github.com:dlang/phobos.git
@@ -13,3 +13,7 @@
 [submodule "ninja"]
 	path = ninja
 	url = git@github.com:symmetryinvestments/ninja.git
+[submodule "sdc"]
+	path = sdc
+	url = git@github.com:schveiguy/sdc.git
+	branch = dmdbuild
