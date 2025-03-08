@@ -9,7 +9,7 @@
 	url = git@github.com:dlang/dub.git
 [submodule "reggae"]
 	path = reggae
-	url = git@github.com:kinke/reggae.git
+	url = git@github.com:atilaneves/reggae.git
 [submodule "ninja"]
 	path = ninja
 	url = git@github.com:symmetryinvestments/ninja.git
