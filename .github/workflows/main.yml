@@ -10,7 +10,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  HOST_DC: ldc-1.36.0
+  HOST_DC: ldc-1.40.1
 
 jobs:
   test:
