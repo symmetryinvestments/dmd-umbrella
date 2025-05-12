@@ -10,12 +10,12 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  HOST_DC: ldc-1.36.0
+  HOST_DC: ldc-1.40.1
 
 jobs:
   test:
-    name: Ubuntu 20.04 x86_64
-    runs-on: ubuntu-20.04
+    name: Ubuntu 22.04 x86_64
+    runs-on: ubuntu-22.04
     timeout-minutes: 15
     permissions:
       contents: write # for creating the GitHub release

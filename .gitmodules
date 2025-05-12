@@ -1,6 +1,6 @@
 [submodule "dmd"]
 	path = dmd
-	url = git@github.com:dlang/dmd.git
+	url = git@github.com:symmetryinvestments/dmd.git
 [submodule "phobos"]
 	path = phobos
 	url = git@github.com:dlang/phobos.git
