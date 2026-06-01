@@ -38,5 +38,12 @@ has landed upstream.
    Optionally bump host D compiler in `.gitlab-ci.yml`.
 4. Commit changes and open a PR. Download the `dmd2.tar.xz` CI artifact
    for local testing. Merge when happy.
-5. Sync & push a new tag with shape `v2.108.0-sym1`. CI creates a GitHub
-   release and uploads the artifact.
+   * To mimic a compiler install from the official [install.sh](https://dlang.org/install.html)
+     script:
+     1. Unpack the downloaded CI artifact into `~/dlang/`.
+     2. Rename the just-extracted `~/dlang/dmd2` dir to e.g. `dmd-2.108.0-sym1`.
+     3. Copy the `activate` script from another DMD subdir in `~/dlang/`
+        to the new dir and fix up the compiler directory/version.
+6. Sync & push a new tag with shape `v2.108.0-sym1`. CI creates a
+   [GitHub release](https://github.com/symmetryinvestments/dmd-umbrella/releases)
+   and uploads the artifact.
